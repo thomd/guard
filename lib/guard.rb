@@ -171,6 +171,7 @@ module Guard
       interactor.stop if interactor
       runner.run(:stop)
       ::Guard::UI.info 'Bye bye...', :reset => true
+      ::Guard::Notifier.reset
 
       @allow_stop.signal if @allow_stop
     end
@@ -208,6 +209,7 @@ module Guard
         listener.unpause
       else
         ::Guard::UI.info 'Paused files modification listening', :reset => true
+        ::Guard::Notifier.reset
         listener.pause
       end
     end

@@ -160,6 +160,20 @@ module Guard
       end
     end
 
+    # Reset a system notification for all configured notifiers on pause and exit.
+    #
+    def reset
+      if enabled?
+        notifications.each do |notification|
+          begin
+            get_notifier_module(notification[:name]).reset()
+          rescue Exception => e
+            ::Guard::UI.error "Error resetting notification with #{ notification[:name] }: #{ e.message }"
+          end
+        end
+      end
+    end
+
     private
 
     # Get the notifier module for the given name.

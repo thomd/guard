@@ -51,10 +51,17 @@ module Guard
       #
       def notify(type, title, message, image, options = { })
         color = tmux_color type, options
-        system("#{ DEFAULTS[:client] } set -g status-left-bg #{ color } 1>/dev/null")
+        system("#{ DEFAULTS[:client] } set status-left-bg #{ color } 1>/dev/null")
 
         show_message = options[:display_message] || DEFAULTS[:display_message]
         display_message(type, title, message, options) if show_message
+      end
+
+      # Reset a system notification on exit
+      # unset an tmux options and inherit option from the global options.
+      #
+      def reset()
+        system("#{ DEFAULTS[:client] } set -u status-left-bg 1>/dev/null")
       end
 
       # Display a message in the statusbar of tmux.
