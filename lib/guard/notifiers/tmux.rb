@@ -51,7 +51,7 @@ module Guard
       #
       def notify(type, title, message, image, options = { })
         color = tmux_color type, options
-        system("#{ DEFAULTS[:client] } set -g status-left-bg #{ color }")
+        system("#{ DEFAULTS[:client] } set -g status-left-bg #{ color } 1>/dev/null")
 
         show_message = options[:display_message] || DEFAULTS[:display_message]
         display_message(type, title, message, options) if show_message
@@ -76,9 +76,9 @@ module Guard
           formatted_message = message.split("\n").join(separator)
           display_message = message_format % [title, formatted_message]
 
-          system("#{ DEFAULTS[:client] } set display-time #{ display_time * 1000 }")
-          system("#{ DEFAULTS[:client] } set message-bg #{ color }")
-          system("#{ DEFAULTS[:client] } display-message '#{ display_message }'")
+          system("#{ DEFAULTS[:client] } set display-time #{ display_time * 1000 } 1>/dev/null")
+          system("#{ DEFAULTS[:client] } set message-bg #{ color } 1>/dev/null")
+          system("#{ DEFAULTS[:client] } display-message '#{ display_message }' 1>/dev/null")
       end
 
       # Get the Tmux color for the notification type.
