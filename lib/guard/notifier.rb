@@ -166,7 +166,8 @@ module Guard
       if enabled?
         notifications.each do |notification|
           begin
-            get_notifier_module(notification[:name]).reset()
+            notifier = get_notifier_module(notification[:name])
+            notifier.reset() if notifier.respond_to? :reset
           rescue Exception => e
             ::Guard::UI.error "Error resetting notification with #{ notification[:name] }: #{ e.message }"
           end
