@@ -1,10 +1,66 @@
 ## Master
 
+### New features
+
+- [#369][] Allow Guard plugins to specify their template location. ([@schmurfy][])
+- [#364][] Add `ignore!` and `filter!` DSL methods. ([@tarsolya][])
+- [#362][] Add interactor options `:history_file` and `:guard_rc`. ([@netzpirat][])
+
+### Improvements
+
+- [#368][] Detecting duplicate definitions and then warning the user. ([@jfolkins][])
+- [#367][] Change modeline's fgcolor when changing bgcolor in emacs notifier. ([@iljoo][])
+
+### Bug fixes
+
+- [#365][] Fix terminal reset redirect to null devise on Windows. ([@cablegram][])
+- [#365][] Fix Emacs notifier detection on Windows. ([@cablegram][])
+- [#361][] Tmux notifier affects only the local session. ([@netzpirat][])
+
+## 1.5.4 - 9 November, 2012
+
+### Improvements
+
+- Thread handling improved and added thread debug mode. ([@netzpirat][])
+
+### Bug fix
+
+- [#358][] Ignore `~/.pryrc` since it breaks Guard when loading the Rails env. ([@netzpirat][])
+
+## 1.5.3 - 31 October, 2012
+
+### Bug fixes
+
+- [#352][] Guard always reloading twice. ([@netzpirat][])
+- [#354][] Ignore `./.pryrc` since it breaks Guard when loading the Rails env. ([@netzpirat][])
+
+## 1.5.2 - 29 October, 2012
+
+### Bug fix
+
+- [#353][] Do not modify original message in terminal_title notifier. ([@tomas-zemres][])
+
+## 1.5.1 - 28 October, 2012
+
+### Bug fix
+
+- [#351][] Fix turning off the interactor from the Guardfile. ([@netzpirat][])
+
+## 1.5.0 - 22 October, 2012
+
+### New features
+
+- [#327][] Use Pry as interactor. ([@netzpirat][])
+- [#345][] Use Lumberjack as customizable logger. ([@netzpirat][])
+- [#342][] Add notifier for displaying result in terminal title. ([@tomas-zemres][])
+- [#348][] Introduce grouping of the notifiers for better auto-detection. ([@netzpirat][])
+
+### Improvements
+
+- [#348][] Introduce grouping of the notifiers. ([@netzpirat][])
+- [#343][] Customize tmux notifier status location. ([@nickmabry][])
 - Adds ability to override default options in emacs notifier. ([@d1][])
 - Use `$stderr` instead of `STDERR` to allow redirection. ([@netzpirat][])
-
-## 1.4.1 - 5 October, 2012
-
 - [#334][] Extend `:tmux` notifier with use of `tmux display-message` and options to configure them. ([@matthijsgroen][])
 
 ## 1.4.0 - 26 September, 2012
@@ -608,8 +664,25 @@ The Listen integration has been supervised by [@thibaudgg][] and executed by [@M
 [#316]: https://github.com/guard/guard/issues/316
 [#317]: https://github.com/guard/guard/issues/317
 [#324]: https://github.com/guard/guard/issues/324
+[#327]: https://github.com/guard/guard/issues/327
 [#331]: https://github.com/guard/guard/issues/331
 [#334]: https://github.com/guard/guard/issues/334
+[#342]: https://github.com/guard/guard/issues/342
+[#343]: https://github.com/guard/guard/issues/343
+[#345]: https://github.com/guard/guard/issues/345
+[#348]: https://github.com/guard/guard/issues/348
+[#351]: https://github.com/guard/guard/issues/351
+[#352]: https://github.com/guard/guard/issues/352
+[#353]: https://github.com/guard/guard/issues/353
+[#354]: https://github.com/guard/guard/issues/354
+[#358]: https://github.com/guard/guard/issues/358
+[#361]: https://github.com/guard/guard/issues/361
+[#362]: https://github.com/guard/guard/issues/362
+[#364]: https://github.com/guard/guard/issues/364
+[#365]: https://github.com/guard/guard/issues/365
+[#367]: https://github.com/guard/guard/issues/367
+[#368]: https://github.com/guard/guard/issues/368
+[#369]: https://github.com/guard/guard/issues/369
 [@Gazer]: https://github.com/Gazer
 [@Maher4Ever]: https://github.com/Maher4Ever
 [@alandipert]: https://github.com/alandipert
@@ -618,6 +691,7 @@ The Listen integration has been supervised by [@thibaudgg][] and executed by [@M
 [@benolee]: https://github.com/benolee
 [@brainopia]: https://github.com/brainopia
 [@bronson]: https://github.com/bronson
+[@cablegram]: https://github.com/cablegram
 [@capotej]: https://github.com/capotej
 [@ches]: https://github.com/ches
 [@chrisberkhout]: https://github.com/chrisberkhout
@@ -638,9 +712,11 @@ The Listen integration has been supervised by [@thibaudgg][] and executed by [@M
 [@hawx]: https://github.com/hawx
 [@hron]: https://github.com/hron
 [@ianwhite]: https://github.com/ianwhite
+[@iljoo]: https://github.com/iljoo
 [@indirect]: https://github.com/indirect
 [@japgolly]: https://github.com/japgolly
 [@jeffutter]: https://github.com/jeffutter
+[@jfolkins]: https://github.com/jfolkins
 [@johnbintz]: https://github.com/johnbintz
 [@jredville]: https://github.com/jredville
 [@jrsacks]: https://github.com/jrsacks
@@ -657,6 +733,7 @@ The Listen integration has been supervised by [@thibaudgg][] and executed by [@M
 [@mordaroso]: https://github.com/mordaroso
 [@nestegg]: https://github.com/nestegg
 [@netzpirat]: https://github.com/netzpirat
+[@nickmabry]: https://github.com/nickmabry
 [@nicksieger]: https://github.com/nicksieger
 [@niklas]: https://github.com/niklas
 [@oliamb]: https://github.com/oliamb
@@ -668,6 +745,7 @@ The Listen integration has been supervised by [@thibaudgg][] and executed by [@M
 [@royvandewater]: https://github.com/royvandewater
 [@rupert654]: https://github.com/rupert654
 [@rymai]: https://github.com/rymai
+[@schmurfy]: https://github.com/schmurfy
 [@scottdavis]: https://github.com/scottdavis
 [@semperos]: https://github.com/semperos
 [@spadin]: https://github.com/spadin
@@ -676,9 +754,11 @@ The Listen integration has been supervised by [@thibaudgg][] and executed by [@M
 [@stouset]: https://github.com/stouset
 [@sunaku]: https://github.com/sunaku
 [@sutherland]: https://github.com/sutherland
+[@tarsolya]: https://github.com/tarsolya
 [@thibaudgg]: https://github.com/thibaudgg
 [@thierryhenrio]: https://github.com/thierryhenrio
 [@tinogomes]: https://github.com/tinogomes
+[@tomas-zemres]: https://github.com/tomas-zemres
 [@tpope]: https://github.com/tpope
 [@uk-ar]: https://github.com/uk-ar
 [@veged]: https://github.com/veged

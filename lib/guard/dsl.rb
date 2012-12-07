@@ -16,7 +16,7 @@ module Guard
   #
   # A more advanced DSL use is the `callback` keyword that allows you to execute arbitrary
   # code before or after any of the `start`, `stop`, `reload`, `run_all`, `run_on_changes`,
-  # `run_on_additions`, `run_on_modifications` and `run_on_removals` Guard plugins method. 
+  # `run_on_additions`, `run_on_modifications` and `run_on_removals` Guard plugins method.
   # You can even insert more hooks inside these methods.
   # Please [checkout the Wiki page](https://github.com/guard/guard/wiki/Hooks-and-callbacks) for more details.
   #
@@ -93,10 +93,16 @@ module Guard
 
     # Deprecation message for the `ignore_paths` method
     IGNORE_PATHS_DEPRECATION = <<-EOS.gsub(/^\s*/, '')
-      Starting with Guard v1.1 the use of the 'ignore_paths' Guardfile dsl method is deprecated.
+      Starting with Guard v1.1 the use of the 'ignore_paths' Guardfile DSL method is deprecated.
 
       Please replace that method with the better 'ignore' or/and 'filter' methods.
       Documentation on the README: https://github.com/guard/guard#guardfile-dsl-ignore
+    EOS
+
+    # Deprecation message for the `ignore_paths` method
+    INTERACTOR_DEPRECATION = <<-EOS.gsub(/^\s*/, '')
+      Starting with Guard v1.4 the use of the 'interactor' Guardfile DSL method is only used to
+      disable or pass options to the Pry interactor. All other usages are deprecated.
     EOS
 
     class << self
@@ -315,17 +321,21 @@ module Guard
 
     # Sets the interactor to use.
     #
-    # @example Use the readline interactor
-    #   interactor :readline
-    #
-    # @example Use the gets interactor
-    #   interactor :gets
-    #
     # @example Turn off interactions
     #   interactor :off
     #
-    def interactor(interactor)
-      ::Guard::Interactor.interactor = interactor.to_sym
+    # @param [Symbol,Hash] options either `:off` or a Hash with interactor options
+    #
+    def interactor(options)
+      if options == :off
+        ::Guard::Interactor.enabled = false
+
+      elsif options.is_a?(Hash)
+        ::Guard::Interactor.options = options
+
+      else
+        ::Guard::UI.deprecation(INTERACTOR_DEPRECATION)
+      end
     end
 
     # Declares a group of Guard plugins to be run with `guard start --group group_name`.
@@ -443,7 +453,7 @@ module Guard
       ::Guard::UI.deprecation(IGNORE_PATHS_DEPRECATION)
     end
 
-    # Ignore certain patterns paths globally.
+    # Ignore certain paths globally.
     #
     # @example Ignore some paths
     #   ignore %r{^ignored/path/}, /man/
@@ -454,15 +464,94 @@ module Guard
       ::Guard.listener = ::Guard.listener.ignore(*regexps)
     end
 
-    # Filter certain patterns paths globally.
+    # Replace ignored paths globally
+    #
+    # @example Ignore only these paths
+    #   ignore! %r{^ignored/path/}, /man/
+    #
+    # @param [Regexp] regexps a pattern for ignoring paths
+    #
+    def ignore!(*regexps)
+      ::Guard.listener = ::Guard.listener.ignore!(*regexps)
+    end
+
+    # Filter certain paths globally.
     #
     # @example Filter some files
-    #   ignore /\.txt$/, /.*\.zip/
+    #   filter /\.txt$/, /.*\.zip/
     #
     # @param [Regexp] regexps a pattern for filtering paths
     #
     def filter(*regexps)
       ::Guard.listener = ::Guard.listener.filter(*regexps)
+    end
+
+    # Replace filtered paths globally.
+    #
+    # @example Filter only these files
+    #   filter! /\.txt$/, /.*\.zip/
+    #
+    # @param [Regexp] regexps a pattern for filtering paths
+    #
+    def filter!(*regexps)
+      ::Guard.listener = ::Guard.listener.filter!(*regexps)
+    end
+
+    # Configure the Guard logger.
+    #
+    # * Log level must be either `:debug`, `:info`, `:warn` or `:error`.
+    # * Template supports the following placeholders: `:time`, `:severity`, `:progname`, `:pid`, `:unit_of_work_id` and `:message`
+    # * Time format directives are the same as Time#strftime or :milliseconds
+    # * The `:only` and `:except` options must be a RegExp.
+    #
+    # @example Set the log level
+    #   logger :level => :warn
+    #
+    # @example Set a custom log template
+    #   logger :template => '[Guard - :severity - :progname - :time] :message'
+    #
+    # @example Set a custom time format
+    #   logger :time_format => '%h'
+    #
+    # @example Limit logging to a Guard plugin
+    #   logger :only => :jasmine
+    #
+    # @example Log all but not the messages from a specific Guard plugin
+    #   logger :except => :jasmine
+    #
+    # @param [Hash] options the log options
+    # @option options [String, Symbol] level the log level
+    # @option options [String] template the logger template
+    # @option options [String, Symbol] time_format the time format
+    # @option options [RegExp] only show only messages from the matching Guard plugin
+    # @option options [RegExp] except does not show messages from the matching Guard plugin
+    #
+    def logger(options)
+      if options[:level]
+        options[:level] = options[:level].to_sym
+
+        unless [:debug, :info, :warn, :error].include? options[:level]
+          ::Guard::UI.warning "Invalid log level `#{ options[:level] }` ignored. Please use either :debug, :info, :warn or :error."
+          options.delete :level
+        end
+      end
+
+      if options[:only] && options[:except]
+        ::Guard::UI.warning "You cannot specify the logger options :only and :except at the same time."
+
+        options.delete :only
+        options.delete :except
+      end
+
+      # Convert the :only and :except options to a regular expression
+      [:only, :except].each do |name|
+        if options[name]
+          list = [].push(options[name]).flatten.map { |plugin| Regexp.escape(plugin.to_s) }.join('|')
+          options[name] = Regexp.new(list, Regexp::IGNORECASE)
+        end
+      end
+
+      ::Guard::UI.options = ::Guard::UI.options.merge options
     end
 
   end

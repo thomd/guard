@@ -14,6 +14,7 @@ module Guard
   # * rb-notifu
   # * emacs
   # * Terminal Notifier
+  # * Terminal Title
   # * Tmux
   #
   # Please see the documentation of each notifier for more information about the requirements
@@ -46,22 +47,26 @@ module Guard
     require 'guard/notifiers/rb_notifu'
     require 'guard/notifiers/emacs'
     require 'guard/notifiers/terminal_notifier'
+    require 'guard/notifiers/terminal_title'
     require 'guard/notifiers/tmux'
 
     extend self
 
-    # List of available notifiers. It needs to be a nested hash instead of
+    # List of available notifiers, grouped by functionality. It needs to be a nested hash instead of
     # a simpler Hash, because it maintains its order on Ruby 1.8.7 also.
     NOTIFIERS = [
-      [:growl,             ::Guard::Notifier::Growl],
-      [:gntp,              ::Guard::Notifier::GNTP],
-      [:growl_notify,      ::Guard::Notifier::GrowlNotify],
-      [:libnotify,         ::Guard::Notifier::Libnotify],
-      [:notifysend,        ::Guard::Notifier::NotifySend],
-      [:notifu,            ::Guard::Notifier::Notifu],
-      [:emacs,             ::Guard::Notifier::Emacs],
-      [:terminal_notifier, ::Guard::Notifier::TerminalNotifier],
-      [:tmux,              ::Guard::Notifier::Tmux]
+      [
+        [:gntp,              ::Guard::Notifier::GNTP],
+        [:growl,             ::Guard::Notifier::Growl],
+        [:growl_notify,      ::Guard::Notifier::GrowlNotify],
+        [:terminal_notifier, ::Guard::Notifier::TerminalNotifier],
+        [:libnotify,         ::Guard::Notifier::Libnotify],
+        [:notifysend,        ::Guard::Notifier::NotifySend],
+        [:notifu,            ::Guard::Notifier::Notifu]
+      ],
+      [[:emacs,             ::Guard::Notifier::Emacs]],
+      [[:tmux,              ::Guard::Notifier::Tmux]],
+      [[:terminal_title,    ::Guard::Notifier::TerminalTitle]]
     ]
 
     # Get the available notifications.
@@ -108,6 +113,17 @@ module Guard
     #
     def turn_off
       ENV['GUARD_NOTIFY'] = 'false'
+    end
+
+    # Toggle the system notifications on/off
+    #
+    def toggle
+      if ENV['GUARD_NOTIFY'] == 'true'
+        ::Guard::UI.info 'Turn off notifications'
+        turn_off
+      else
+        turn_on
+      end
     end
 
     # Test if the notifications are on.
@@ -179,20 +195,27 @@ module Guard
 
     # Get the notifier module for the given name.
     #
-    # @param [Symbol] the notifier name
+    # @param [Symbol] name the notifier name
     # @return [Module] the notifier module
     #
     def get_notifier_module(name)
-      notifier = NOTIFIERS.detect { |n| n.first == name }
+      notifier = NOTIFIERS.flatten(1).detect { |n| n.first == name }
       notifier ? notifier.last : notifier
     end
 
     # Auto detect the available notification library. This goes through
     # the list of supported notification gems and picks the first that
-    # is available.
+    # is available in each notification group.
     #
     def auto_detect_notification
-      available = NOTIFIERS.map { |n| n.first }.any? { |notifier| add_notification(notifier, { }, true) }
+      available = nil
+      self.notifications = []
+
+      NOTIFIERS.each do |group|
+        added = group.map { |n| n.first }.find { |notifier| add_notification(notifier, { }, true) }
+        available = available || added
+      end
+
       ::Guard::UI.info('Guard could not detect any of the supported notification libraries.') unless available
     end
 

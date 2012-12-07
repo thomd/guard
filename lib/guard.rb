@@ -1,3 +1,4 @@
+require 'rbconfig'
 require 'thread'
 require 'listen'
 
@@ -20,6 +21,9 @@ module Guard
 
   # The location of user defined templates
   HOME_TEMPLATES = File.expand_path('~/.guard/templates')
+
+  WINDOWS = RbConfig::CONFIG["host_os"] =~ %r!(msdos|mswin|djgpp|mingw)!
+  DEV_NULL = WINDOWS ? "NUL" : "/dev/null"
 
   class << self
     attr_accessor :options, :interactor, :runner, :listener, :lock
@@ -44,7 +48,12 @@ module Guard
       @options    = options
       @watchdir   = (options[:watchdir] && File.expand_path(options[:watchdir])) || Dir.pwd
       @runner     = ::Guard::Runner.new
-      @allow_stop = Listen::Turnstile.new
+
+      if @options[:debug]
+        Thread.abort_on_exception = true
+        ::Guard::UI.options[:level] = :debug
+        debug_command_execution
+      end
 
       ::Guard::UI.clear(:force => true)
       deprecated_options_warning
@@ -53,8 +62,6 @@ module Guard
       setup_guards
       setup_listener
       setup_signal_traps
-
-      debug_command_execution if @options[:debug]
 
       ::Guard::Dsl.evaluate_guardfile(options)
       ::Guard::UI.error 'No guards found in Guardfile, please add at least one.' if @guards.empty?
@@ -129,8 +136,8 @@ module Guard
     # Initializes the interactor unless the user has specified not to.
     #
     def setup_interactor
-      unless options[:no_interactions]
-        @interactor = ::Guard::Interactor.fabricate
+      unless options[:no_interactions] || !::Guard::Interactor.enabled
+        @interactor = ::Guard::Interactor.new
       end
     end
 
@@ -159,24 +166,28 @@ module Guard
         runner.run(:start)
       end
 
-      listener.start(false)
-
-      @allow_stop.wait if @allow_stop
+      # Blocks main thread
+      listener.start
     end
 
     # Stop Guard listening to file changes
     #
     def stop
-      listener.stop
-      interactor.stop if interactor
-      runner.run(:stop)
-      ::Guard::UI.info 'Bye bye...', :reset => true
-      ::Guard::Notifier.reset
+      within_preserved_state(false) do
+        runner.run(:stop)
+        ::Guard::UI.info 'Bye bye...', :reset => true
 
-      @allow_stop.signal if @allow_stop
+        # Unblocks main thread
+        listener.stop
+
+        # reset notifier
+        ::Guard::Notifier.reset
+      end
     end
 
     # Reload Guardfile and all Guard plugins currently enabled.
+    # If no scope is given, then the Guardfile will be re-evaluated,
+    # which results in a stop/start, which makes the reload obsolete.
     #
     # @param [Hash] scopes hash with a Guard plugin or a group scope
     #
@@ -184,8 +195,12 @@ module Guard
       within_preserved_state do
         ::Guard::UI.clear(:force => true)
         ::Guard::UI.action_with_scopes('Reload', scopes)
-        ::Guard::Dsl.reevaluate_guardfile if scopes.empty?
-        runner.run(:reload, scopes)
+
+        if scopes.empty?
+          ::Guard::Dsl.reevaluate_guardfile
+        else
+          runner.run(:reload, scopes)
+        end
       end
     end
 
@@ -317,9 +332,10 @@ module Guard
     # blocked and execution is synchronized
     # to avoid state inconsistency.
     #
+    # @param [Boolean] restart_interactor whether to restart the interactor or not
     # @yield the block to run
     #
-    def within_preserved_state
+    def within_preserved_state(restart_interactor = true)
       lock.synchronize do
         begin
           interactor.stop if interactor
@@ -327,8 +343,9 @@ module Guard
         rescue Interrupt
         end
 
-        interactor.start if interactor
+        interactor.start if interactor && restart_interactor
       end
+
       @result
     end
 

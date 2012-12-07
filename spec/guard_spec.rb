@@ -1,7 +1,9 @@
 require 'spec_helper'
 
 describe Guard do
-  before { ::Guard::Interactor.stub(:fabricate) }
+  before do
+    ::Guard::Interactor.stub(:fabricate)
+  end
 
   describe ".setup" do
     let(:options) { { :my_opts => true, :guardfile => File.join(@fixture_path, "Guardfile") } }
@@ -34,12 +36,6 @@ describe Guard do
       ::Guard.listener.directory.should eq '/usr'
     end
 
-    it "logs command execution if the debug option is true" do
-      ::Guard.should_receive(:debug_command_execution)
-
-      ::Guard.setup(:debug => true)
-    end
-
     it "call setup_signal_traps" do
       ::Guard.should_receive(:setup_signal_traps)
       subject
@@ -64,16 +60,31 @@ describe Guard do
       ::Guard.should_receive(:setup_interactor)
       subject
     end
-    
+
     context 'when deprecations should be shown' do
       let(:options) { { :show_deprecations => true, :guardfile => File.join(@fixture_path, "Guardfile") } }
       subject { ::Guard.setup(options) }
       let(:runner) { mock('runner') }
-      
+
       it 'calls the runner show deprecations' do
         ::Guard::Runner.should_receive(:new).and_return runner
         runner.should_receive(:deprecation_warning)
         subject
+      end
+    end
+
+    context 'with the debug mode turned on' do
+      let(:options) { { :debug => true, :guardfile => File.join(@fixture_path, "Guardfile") } }
+      subject { ::Guard.setup(options) }
+
+      it "logs command execution if the debug option is true" do
+        ::Guard.should_receive(:debug_command_execution)
+        subject
+      end
+
+      it "sets the log level to :debug if the debug option is true" do
+        subject
+        ::Guard::UI.options[:level].should eql :debug
       end
     end
   end
@@ -257,33 +268,66 @@ describe Guard do
   end
 
   describe ".setup_interactor" do
-    context "with interactions enabled" do
-      before { ::Guard.setup(:no_interactions => false) }
+    context 'with CLI options' do
+      before do
+        @enabled = ::Guard::Interactor.enabled
+        ::Guard::Interactor.enabled = true
+      end
 
-      it_should_behave_like 'interactor enabled'
+      after { ::Guard::Interactor.enabled = @enabled }
+
+      context "with interactions enabled" do
+        before { ::Guard.setup(:no_interactions => false) }
+
+        it_should_behave_like 'interactor enabled'
+      end
+
+      context "with interactions disabled" do
+        before { ::Guard.setup(:no_interactions => true) }
+
+        it_should_behave_like 'interactor disabled'
+      end
     end
 
-    context "with interactions disabled" do
-      before { ::Guard.setup(:no_interactions => true) }
+    context 'with DSL options' do
+      before { @enabled = ::Guard::Interactor.enabled }
+      after { ::Guard::Interactor.enabled = @enabled }
 
-      it_should_behave_like 'interactor disabled'
+      context "with interactions enabled" do
+        before do
+          ::Guard::Interactor.enabled = true
+          ::Guard.setup()
+        end
+
+        it_should_behave_like 'interactor enabled'
+      end
+
+      context "with interactions disabled" do
+        before do
+          ::Guard::Interactor.enabled = false
+          ::Guard.setup()
+        end
+
+        it_should_behave_like 'interactor disabled'
+      end
     end
   end
 
   describe '#reload' do
     let(:runner) { stub(:run => true) }
     subject { ::Guard.setup }
-    
+
     before do
       ::Guard.stub(:runner) { runner }
       ::Guard::Dsl.stub(:reevaluate_guardfile)
+      ::Guard.stub(:within_preserved_state).and_yield
       ::Guard::UI.stub(:info)
       ::Guard::UI.stub(:clear)
     end
 
     it "clear UI" do
       ::Guard::UI.should_receive(:clear)
-      subject.reload({ })
+      subject.reload
     end
 
     context 'with a scope' do
@@ -301,12 +345,12 @@ describe Guard do
     context 'with an empty scope' do
       it 'does re-evaluate the Guardfile' do
         ::Guard::Dsl.should_receive(:reevaluate_guardfile)
-        subject.reload({ })
+        subject.reload
       end
 
-      it 'reloads Guard' do
-        ::Guard.should_receive(:reload).with({ })
-        subject.reload({ })
+      it 'does not reload Guard' do
+        ::Guard.should_not_receive(:reload).with({ })
+        subject.reload
       end
     end
   end
@@ -601,12 +645,6 @@ describe Guard do
     subject { ::Guard.setup }
     before { subject.interactor =  stub('interactor').as_null_object }
 
-    it 'disables the interactor before running the block and then re-enables it when done' do
-      subject.interactor.should_receive(:stop)
-      subject.interactor.should_receive(:start)
-      subject.within_preserved_state &Proc.new {}
-    end
-
     it 'disallows running the block concurrently to avoid inconsistent states' do
       subject.lock.should_receive(:synchronize)
       subject.within_preserved_state &Proc.new {}
@@ -616,6 +654,22 @@ describe Guard do
       @called = false
       subject.within_preserved_state { @called = true }
       @called.should be_true
+    end
+
+    context 'with restart interactor enabled' do
+      it 'stops the interactor before running the block and starts it again when done' do
+        subject.interactor.should_receive(:stop)
+        subject.interactor.should_receive(:start)
+        subject.within_preserved_state &Proc.new {}
+      end
+    end
+
+    context 'without restart interactor enabled' do
+      it 'stops the interactor before running the block' do
+        subject.interactor.should_receive(:stop)
+        subject.interactor.should__not_receive(:start)
+        subject.within_preserved_state &Proc.new {}
+      end
     end
   end
 
@@ -732,6 +786,7 @@ describe Guard do
     subject { ::Guard.setup }
 
     before do
+      Guard.unstub(:debug_command_execution)
       @original_system = Kernel.method(:system)
       @original_command = Kernel.method(:"`")
     end
@@ -740,18 +795,24 @@ describe Guard do
       Kernel.send(:remove_method, :system, :'`')
       Kernel.send(:define_method, :system, @original_system.to_proc)
       Kernel.send(:define_method, :"`", @original_command.to_proc)
+      Guard.stub(:debug_command_execution)
     end
 
     it "outputs Kernel.#system method parameters" do
-      ::Guard.setup(:debug => true)
       ::Guard::UI.should_receive(:debug).with("Command execution: exit 0")
+      ::Guard.setup(:debug => true)
       system("exit", "0").should be_false
     end
 
     it "outputs Kernel.#` method parameters" do
+      ::Guard::UI.should_receive(:debug).with("Command execution: echo test")
       ::Guard.setup(:debug => true)
-      ::Guard::UI.should_receive(:debug).twice.with("Command execution: echo test")
       `echo test`.should == "test\n"
+    end
+
+    it "outputs %x{} method parameters" do
+      ::Guard::UI.should_receive(:debug).with("Command execution: echo test")
+      ::Guard.setup(:debug => true)
       %x{echo test}.should == "test\n"
     end
 

@@ -1,19 +1,17 @@
 require 'spec_helper'
 
 describe Guard::Notifier::TerminalNotifier do
-  before(:all) { Object.send(:remove_const, :TerminalNotifier) if defined?(::TerminalNotifier) }
 
-  before do
-    subject.stub(:require)
-
-    class TerminalNotifier
-      module Guard
-        def self.show(options) end
-      end
+  let(:fake_terminal_notifier) do
+    Module.new do
+      def self.execute(options) end
     end
   end
 
-  after { Object.send(:remove_const, :TerminalNotifier) if defined?(::TerminalNotifier) }
+  before do
+    subject.stub(:require)
+    stub_const 'TerminalNotifier::Guard', fake_terminal_notifier
+  end
 
   describe '.available?' do
     context 'without the silent option' do
@@ -25,11 +23,11 @@ describe Guard::Notifier::TerminalNotifier do
     end
   end
 
-  describe ".notify" do
-    it "should call the notifier." do
+  describe '.notify' do
+    it 'should call the notifier.' do
       ::TerminalNotifier::Guard.should_receive(:execute).with(
         false,
-        {:title=>"any title", :type=>:success, :message=>"any message"}
+        { :title => 'any title', :type => :success, :message => 'any message' }
       )
       subject.notify('success', 'any title', 'any message', 'any image', { })
     end
@@ -37,20 +35,20 @@ describe Guard::Notifier::TerminalNotifier do
     it "should allow the title to be customized" do
       ::TerminalNotifier::Guard.should_receive(:execute).with(
         false,
-        {:title=>"any title", :message => "any message", :type => :error}
+        { :title => 'any title', :message => 'any message', :type => :error }
       )
 
       subject.notify('error', 'any title', 'any message', 'any image', { })
     end
 
-    context "without a title set" do
-      it "should show the app name in the title" do
+    context 'without a title set' do
+      it 'should show the app name in the title' do
         ::TerminalNotifier::Guard.should_receive(:execute).with(
           false,
-          {:title=>"FooBar Success", :type=>:success, :message=>"any message"}
+          { :title => 'FooBar Success', :type => :success, :message => 'any message' }
         )
 
-        subject.notify('success', nil, 'any message', 'any image', {:app_name => "FooBar"})
+        subject.notify('success', nil, 'any message', 'any image', { :app_name => 'FooBar' })
       end
     end
   end

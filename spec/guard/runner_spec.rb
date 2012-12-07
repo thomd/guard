@@ -1,38 +1,35 @@
 require 'spec_helper'
 
 describe Guard::Runner do
-  before(:all) do
-    # Define two guard implementations
-    class ::Guard::Foo < ::Guard::Guard; end
-    class ::Guard::Bar1 < ::Guard::Guard; end
-    class ::Guard::Bar2 < ::Guard::Guard; end
-  end
 
-  let(:guard_module) { ::Guard }
-  let(:ui_module)    { guard_module::UI }
-  let!(:guard_singleton) { guard_module.setup }
+  let(:guard_module)    { ::Guard }
+  let(:ui_module)       { guard_module::UI }
+  let(:guard_singleton) { guard_module.setup }
 
   # One guard in one group
-  let!(:foo_group)  { guard_singleton.add_group(:foo) }
-  let!(:foo_guard)  { guard_singleton.add_guard(:foo, [], [], :group => :foo) }
+  let!(:foo_group) { guard_singleton.add_group(:foo) }
+
+  let!(:foo_guard) do
+    stub_const 'Guard::Foo', Class.new(Guard::Guard)
+    guard_singleton.add_guard(:foo, [], [], :group => :foo)
+  end
 
   # Two guards in one group
   let!(:bar_group)  { guard_singleton.add_group(:bar) }
-  let!(:bar1_guard) { guard_singleton.add_guard(:bar1, [], [], :group => :bar) }
-  let!(:bar2_guard) { guard_singleton.add_guard(:bar2, [], [], :group => :bar) }
+
+  let!(:bar1_guard) do
+    stub_const 'Guard::Bar1', Class.new(Guard::Guard)
+    guard_singleton.add_guard(:bar1, [], [], :group => :bar)
+  end
+
+  let!(:bar2_guard) do
+    stub_const 'Guard::Bar2', Class.new(Guard::Guard)
+    guard_singleton.add_guard(:bar2, [], [], :group => :bar)
+  end
 
   before do
     # Stub the groups to avoid using the real ones from Guardfile (ex.: Guard::Rspec)
     guard_module.stub(:groups) { [foo_group, bar_group] }
-  end
-
-  after(:all) do
-    # Be nice and don't clutter the namespace
-    ::Guard.instance_eval do
-      remove_const(:Foo)
-      remove_const(:Bar1)
-      remove_const(:Bar2)
-    end
   end
 
   describe '#deprecation_warning' do
@@ -75,6 +72,11 @@ describe Guard::Runner do
       [foo_guard, bar1_guard, bar2_guard].each do |g|
         subject.should_receive(:run_supervised_task).with(g, :my_task)
       end
+      subject.run(:my_task)
+    end
+
+    it 'marks an action as unit of work' do
+      Lumberjack.should_receive(:unit_of_work)
       subject.run(:my_task)
     end
 
